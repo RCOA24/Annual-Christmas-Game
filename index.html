@@ -679,15 +679,21 @@
 
     // --- FIX: TV Controls Logic ---
     function setupTVControls() {
-        // Play button for manual start with sound
+        // Play/Pause toggle button
         tvPlayBtn.addEventListener('click', () => {
-            tvVideo.muted = false; // Enable sound
-            tvVideo.play().then(() => {
-                console.log('Manual play successful with sound');
-                tvPlayBtn.textContent = '⏸ Pause';
-            }).catch(e => {
-                console.error('Manual play failed:', e);
-            });
+            if (tvVideo.paused) {
+                tvVideo.muted = false; // Enable sound
+                tvVideo.play().then(() => {
+                    console.log('Video playing with sound');
+                    tvPlayBtn.textContent = '⏸ Pause';
+                }).catch(e => {
+                    console.error('Play failed:', e);
+                });
+            } else {
+                tvVideo.pause();
+                tvPlayBtn.textContent = '▶ Play';
+                console.log('Video paused');
+            }
         });
         
         tvCloseBtn.addEventListener('click', () => {
@@ -1407,18 +1413,33 @@
             matte.rotation.y = Math.PI / 2;
             frameGroup.add(matte);
 
-            // Load Image from folder based on index
-            const imgPath = FRAME_IMAGES[i] || 'images/default.jpg';
-            const photoTex = textureLoader.load(imgPath); 
-
-            // Photo Content - Scaled
+            // Photo Content - Scaled (create first with placeholder)
+            const photoMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
             const photoPlane = new THREE.Mesh(
                 new THREE.PlaneGeometry(2 * frameScale, 2 * frameScale), 
-                new THREE.MeshBasicMaterial({ map: photoTex, color: 0xffffff }) 
+                photoMat
             );
             photoPlane.position.x = 0.11; // Slightly in front of matte
             photoPlane.rotation.y = Math.PI / 2;
             frameGroup.add(photoPlane);
+
+            // Load Image from folder based on index
+            const imgPath = FRAME_IMAGES[i] || 'images/default.jpg';
+            textureLoader.load(
+                imgPath,
+                (texture) => {
+                    // Success - apply texture
+                    console.log('Loaded texture:', imgPath);
+                    photoPlane.material.map = texture;
+                    photoPlane.material.color.set(0xffffff);
+                    photoPlane.material.needsUpdate = true;
+                },
+                undefined,
+                (err) => {
+                    // Error - show placeholder color
+                    console.error('Failed to load texture:', imgPath, err);
+                }
+            );
 
             // Position frames in a single line along Z axis
             // Start at -7.5, space them by 3 units
