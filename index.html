@@ -64,17 +64,20 @@
             box-shadow: 0 0 10px rgba(0,0,0,0.2);
         }
         
-        /* Improved Action Buttons */
+        /* Improved Action Buttons Layout */
         #actions { 
             position: absolute; bottom: 40px; right: 40px; 
-            display: flex; flex-direction: row; gap: 20px; align-items: flex-end; 
+            display: flex; flex-direction: column-reverse; /* Stack upwards */
+            align-items: flex-end; gap: 15px; 
         }
-        .action-group {
-            display: flex; flex-direction: column; gap: 15px;
+        
+        .action-row {
+            display: flex; gap: 15px; align-items: center; justify-content: flex-end;
         }
+
         .action-btn { 
-            width: 80px; height: 80px; border-radius: 50%; border: 3px solid white; 
-            background: rgba(0,0,0,0.3); color: white; font-weight: bold; font-size: 16px;
+            width: 70px; height: 70px; border-radius: 50%; border: 3px solid white; 
+            background: rgba(0,0,0,0.3); color: white; font-weight: bold; font-size: 14px;
             display: flex; align-items: center; justify-content: center; touch-action: none; cursor: pointer;
             backdrop-filter: blur(4px);
             user-select: none;
@@ -82,11 +85,12 @@
         }
         .action-btn:active { background: rgba(255,255,255,0.4); transform: scale(0.95); }
         
+        /* Interact button styling - now in the same group */
         #interact-btn { 
             background: #ffcc00; color: #333; border-color: #ffcc00; 
-            width: 90px; height: 90px; font-size: 24px; margin-bottom: 20px;
-            display: none; 
+            width: 80px; height: 80px; font-size: 28px; 
             box-shadow: 0 0 15px rgba(255, 204, 0, 0.5);
+            display: none; /* Hidden by default */
         }
 
         /* Mobile Instructions Overlay */
@@ -197,12 +201,16 @@
                 <div id="joystick-knob"></div>
             </div>
 
-            <!-- Right Buttons -->
+            <!-- Right Buttons (Reorganized) -->
             <div id="actions">
-                <button id="interact-btn" class="action-btn">👋</button>
-                <div class="action-group mobile-only">
-                    <button id="jump-btn" class="action-btn">JUMP</button>
+                <!-- Top Row: Interact Button (Large) -->
+                <div class="action-row">
+                    <button id="interact-btn" class="action-btn">👋</button>
+                </div>
+                <!-- Bottom Row: Jump and Duck -->
+                <div class="action-row mobile-only">
                     <button id="crouch-btn" class="action-btn">DUCK</button>
+                    <button id="jump-btn" class="action-btn">JUMP</button>
                 </div>
             </div>
         </div>
@@ -233,6 +241,17 @@
         Love,<br>
         Your Boyfriend
     `;
+
+    // Configuration for Picture Frames
+    // NOTE: You must create a folder named "images" in the same directory as this HTML file.
+    // Place your jpg/png files there and name them as listed below.
+    const FRAME_IMAGES = [
+        'images/picture1.jpg',
+        'images/picture2.jpg',
+        'images/picture3.jpg',
+        'images/picture4.jpg',
+        'images/picture5.jpg'
+    ];
 
     const MEMORY_COLORS = [0xffffff, 0xffffff, 0xffffff, 0xffffff, 0xffffff]; 
     const MEMORY_TITLES = ["", "", "", "", ""]; 
@@ -1140,10 +1159,8 @@
 
 
         // --- FRAMES (Left Wall) ---
-        // Load default texture
         const textureLoader = new THREE.TextureLoader();
-        const defaultPhotoTex = textureLoader.load('image_afcd6a.jpg');
-
+        
         for (let i = 0; i < 5; i++) {
             const frameGroup = new THREE.Group();
             
@@ -1157,8 +1174,17 @@
             matte.rotation.y = Math.PI / 2;
             frameGroup.add(matte);
 
-            // Photo Content (Default Image)
-            const photoPlane = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({map: defaultPhotoTex}));
+            // Load Image from folder based on index
+            // If the file doesn't exist, it might show black or console error, 
+            // but user intends to put files there.
+            const imgPath = FRAME_IMAGES[i] || 'images/default.jpg';
+            const photoTex = textureLoader.load(imgPath); 
+
+            // Photo Content
+            const photoPlane = new THREE.Mesh(
+                new THREE.PlaneGeometry(2, 2), 
+                new THREE.MeshBasicMaterial({ map: photoTex, color: 0xffffff }) 
+            );
             photoPlane.position.x = 0.11; // Slightly in front of matte
             photoPlane.rotation.y = Math.PI / 2;
             frameGroup.add(photoPlane);
