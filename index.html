@@ -10,6 +10,21 @@
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@400;700&display=swap" rel="stylesheet">
     
+    <!-- Force Chrome on Android/Messenger -->
+    <script>
+        (function() {
+            var ua = navigator.userAgent || navigator.vendor || window.opera;
+            // Check if in Facebook or Messenger in-app browser
+            if ((ua.indexOf("FBAN") > -1) || (ua.indexOf("FBAV") > -1)) {
+                // If Android, try to open in Chrome via Intent
+                if (/Android/i.test(ua)) {
+                    var currentUrl = window.location.href.replace("https://", "").replace("http://", "");
+                    window.location.href = "intent://" + currentUrl + "#Intent;scheme=https;package=com.android.chrome;end";
+                }
+            }
+        })();
+    </script>
+
     <style>
         body { margin: 0; overflow: hidden; background-color: #87CEEB; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; -webkit-user-select: none; touch-action: none; }
         #game-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
@@ -341,6 +356,7 @@
         // 7. Decorations
         createHouseAndDecor();
         createCar();
+        createCuteSign(5, 0, 18); // Add the sign outside
         
         // 9. Event Listeners
         setupInputs();
@@ -409,6 +425,68 @@
         ctx.fill();
 
         return new THREE.CanvasTexture(canvas);
+    }
+
+    // --- NEW FUNCTION: CUTE PINK SIGN ---
+    function createCuteSign(x, y, z) {
+        // Texture
+        const canvas = document.createElement('canvas');
+        canvas.width = 512; canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+        
+        // Pink Background
+        ctx.fillStyle = '#FFC0CB'; // Pink
+        ctx.fillRect(0,0,512,256);
+        
+        // Border
+        ctx.strokeStyle = '#FF69B4'; // Hot Pink
+        ctx.lineWidth = 10;
+        ctx.strokeRect(5,5,502,246);
+        
+        // Text
+        ctx.fillStyle = '#C71585'; // Deep Pink text
+        ctx.font = 'bold 36px "Mountains of Christmas", cursive';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        // Multiline text
+        ctx.fillText("Bahay na walang sigawan,", 256, 100);
+        ctx.fillText("puro pagmamahalan", 256, 160);
+        
+        // Hearts
+        ctx.font = '60px serif';
+        ctx.fillText("💕", 60, 60);
+        ctx.fillText("💕", 452, 60);
+        ctx.fillText("🏡", 256, 220);
+
+        const tex = new THREE.CanvasTexture(canvas);
+        
+        // Mesh
+        const board = new THREE.Mesh(
+            new THREE.BoxGeometry(4, 2, 0.2),
+            new THREE.MeshStandardMaterial({ map: tex })
+        );
+        board.position.y = 2.5;
+        
+        // Posts
+        const postMat = new THREE.MeshStandardMaterial({ color: 0x8B4513 }); // Wood
+        const postL = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 3), postMat);
+        postL.position.set(-1.5, 1, 0);
+        const postR = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 3), postMat);
+        postR.position.set(1.5, 1, 0);
+        
+        const group = new THREE.Group();
+        group.add(board);
+        group.add(postL);
+        group.add(postR);
+        
+        group.position.set(x, y, z);
+        // Rotate to face path/street. Path is at z+, so rotate slightly to welcome
+        group.rotation.y = -Math.PI / 6; 
+        
+        scene.add(group);
+        // Add collider
+        addCollider(group, new THREE.Vector3(x, 1.5, z), new THREE.Vector3(4, 3, 1));
     }
 
     function createGround() {
@@ -1347,10 +1425,6 @@
 
         zone.addEventListener('touchend', resetJoystick);
         zone.addEventListener('touchcancel', resetJoystick);
-
-        let lookTouchId = null;
-        let lastLookX = 0;
-        let lastLookY = 0;
 
         document.addEventListener('touchstart', (e) => {
             for (let i = 0; i < e.changedTouches.length; i++) {
