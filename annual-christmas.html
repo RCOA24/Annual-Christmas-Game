@@ -1,0 +1,1526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Christmas World</title>
+    <!-- Removed Great Vibes, kept Mountains of Christmas for Title only -->
+    <link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #87CEEB; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; -webkit-user-select: none; }
+        #game-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        
+        /* UI OVERLAY */
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; }
+        
+        /* Start Screen */
+        #start-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(5px);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: white; pointer-events: auto; z-index: 100;
+            transition: opacity 0.5s;
+        }
+        #start-btn {
+            padding: 15px 40px; font-size: 24px; background: #ff4d4d; color: white;
+            border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 15px rgba(255, 77, 77, 0.4);
+            font-weight: bold; text-transform: uppercase; animation: pulse 2s infinite;
+        }
+        
+        /* HUD */
+        .controls-area { pointer-events: auto; position: relative; width: 100%; height: 100%; display: none; }
+        
+        /* Interaction Prompt */
+        #interaction-prompt {
+            position: absolute; top: 60%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.7); color: #fff; padding: 10px 20px;
+            border-radius: 20px; font-size: 18px; font-weight: bold;
+            pointer-events: none; display: none; text-shadow: 0 1px 2px black;
+            border: 2px solid #ffcc00; animation: bounce 1s infinite;
+        }
+
+        /* Virtual Joystick Zone (Left Half) */
+        #joystick-zone { position: absolute; bottom: 50px; left: 50px; width: 120px; height: 120px; background: rgba(255, 255, 255, 0.1); border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); touch-action: none; }
+        #joystick-knob { position: absolute; top: 50%; left: 50%; width: 50px; height: 50px; background: rgba(255, 255, 255, 0.5); border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+        
+        /* Action Buttons (Right) */
+        #actions { position: absolute; bottom: 40px; right: 40px; display: flex; gap: 15px; align-items: flex-end; }
+        .action-btn { 
+            width: 70px; height: 70px; border-radius: 50%; border: 2px solid white; 
+            background: rgba(0,0,0,0.2); color: white; font-weight: bold; font-size: 14px;
+            display: flex; align-items: center; justify-content: center; touch-action: none; cursor: pointer;
+            backdrop-filter: blur(2px);
+        }
+        .action-btn:active { background: rgba(255,255,255,0.3); transform: scale(0.95); }
+        #interact-btn { 
+            background: #ffcc00; color: #333; border-color: #ffcc00; 
+            width: 90px; height: 90px; font-size: 16px; margin-bottom: 20px;
+            display: none; /* Hidden by default */
+        }
+
+        /* Interaction Modal (Letter/Photos) */
+        #modal-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 50; display: none;
+            align-items: center; justify-content: center; pointer-events: auto;
+        }
+        .modal-content {
+            background: #fff; width: 90%; max-width: 500px; padding: 30px;
+            border-radius: 10px; position: relative; text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            max-height: 80vh; overflow-y: auto;
+        }
+
+        /* Festive Letter Styling */
+        .christmas-card {
+            background-color: #fffaf0;
+            border: 5px double #c41e3a; /* Christmas Red */
+            padding: 20px;
+            border-radius: 10px;
+            position: relative;
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.1);
+        }
+        .christmas-card:before {
+            content: "❄"; font-size: 30px; color: #a8dce7; position: absolute; top: 10px; left: 10px;
+        }
+        .christmas-card:after {
+            content: "❄"; font-size: 30px; color: #a8dce7; position: absolute; bottom: 10px; right: 10px;
+        }
+
+        .paper {
+            font-family: 'Georgia', 'Times New Roman', serif; /* Changed to Readable Serif Font */
+            color: #2f4f4f;
+            line-height: 1.6; font-size: 20px; text-align: left;
+        }
+        
+        .modal-title-style {
+            font-family: 'Mountains of Christmas', cursive;
+            font-weight: 700;
+            font-size: 2.5rem;
+            color: #c41e3a;
+            margin-top: 0;
+            text-shadow: 1px 1px 2px #ccc;
+        }
+
+        .close-btn {
+            margin-top: 20px; padding: 10px 30px; background: #2e8b57; /* Sea Green */
+            color: white; font-family: 'Mountains of Christmas', cursive; font-size: 1.2rem;
+            border: none; border-radius: 5px; cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .close-btn:hover { background: #3cb371; }
+
+        #upload-btn {
+             margin-top: 10px; padding: 10px 20px; background: #4CAF50; color: white;
+             border: none; border-radius: 5px; cursor: pointer; font-weight: bold;
+        }
+
+        /* Animations */
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+
+        /* Media Queries for Desktop/Mobile specific UI */
+        @media (min-width: 769px) {
+            #joystick-zone { display: none; }
+            .mobile-only { display: none; }
+        }
+        @media (max-width: 768px) {
+            #instructions-desktop { display: none; }
+        }
+    </style>
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <div id="game-container"></div>
+    <input type="file" id="image-input" style="display: none;" accept="image/*">
+
+    <div id="ui-layer">
+        <!-- Start Screen -->
+        <div id="start-screen">
+            <h1 style="font-size: 3rem; text-shadow: 0 0 10px #ff4d4d; margin-bottom: 10px; font-family: 'Mountains of Christmas', cursive;">Merry Christmas</h1>
+            <p style="margin-bottom: 30px; opacity: 0.9;">For my wonderful Girlfriend</p>
+            <button id="start-btn">Enter World</button>
+            <p id="instructions-desktop" style="margin-top: 20px; font-size: 14px; color: #ddd;">
+                WASD to Move | SPACE to Jump | E to Interact | Mouse to Look
+            </p>
+        </div>
+
+        <!-- In-Game Controls -->
+        <div class="controls-area" id="controls-ui">
+            <div id="interaction-prompt">Press E to Interact</div>
+
+            <!-- Left Stick -->
+            <div id="joystick-zone" class="mobile-only">
+                <div id="joystick-knob"></div>
+            </div>
+
+            <!-- Right Buttons -->
+            <div id="actions">
+                <button id="interact-btn" class="action-btn">👋</button>
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                    <button id="jump-btn" class="action-btn mobile-only">JUMP</button>
+                    <button id="crouch-btn" class="action-btn mobile-only">DUCK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-overlay">
+        <div class="modal-content christmas-card">
+            <h2 id="modal-title" class="modal-title-style">Message</h2>
+            <div id="modal-body" class="paper">
+                <!-- Content injected via JS -->
+            </div>
+            <button id="upload-btn" style="display:none;">Upload Photo</button>
+            <br>
+            <button class="close-btn" id="close-modal">Close</button>
+        </div>
+    </div>
+
+<script>
+    /**
+     * CUSTOMIZABLE CONTENT
+     */
+    const LETTER_CONTENT = `
+        Dearest Love,<br><br>
+        Welcome home! I've made the place cozy just for you.<br><br>
+        Even though it's cold outside, my heart is warm because of you. Check out our memories on the wall!<br><br>
+        I love you so much.<br><br>
+        Love,<br>
+        Your Boyfriend
+    `;
+
+    // Colors for the "Gallery" placeholder images
+    const MEMORY_COLORS = [0xffffff, 0xffffff, 0xffffff, 0xffffff, 0xffffff]; 
+    const MEMORY_TITLES = ["", "", "", "", ""]; 
+
+    /** * GAME ENGINE SETUP */
+    let scene, camera, renderer;
+    let player, boyfriendNPC;
+    let trees = [], snowParticles, interactables = [], cats = [];
+    let fireParticles = []; // For fire animation
+    let fireLight; // Global ref to fire light for flickering
+    let colliders = []; // Array of Box3 for collision
+    let doorPivot; // For animating the door
+    let isDoorOpen = false;
+    
+    // Physics & Movement Variables
+    let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+    let canJump = false;
+    let isCrouching = false;
+    let velocity = new THREE.Vector3();
+    let direction = new THREE.Vector3();
+    let prevTime = performance.now();
+    
+    // Mobile Control Variables
+    let touchStartX = 0, touchStartY = 0;
+    let joystickActive = false;
+    let moveVector = { x: 0, y: 0 };
+    let lookSpeed = 0.002; // Touch look sensitivity
+
+    // Interaction State
+    let nearbyObject = null;
+    let currentPhotoFrame = null; // To store which frame we are editing
+    let isGameActive = false;
+    let isMobile = 'ontouchstart' in window;
+
+    // Dom Elements
+    const startScreen = document.getElementById('start-screen');
+    const controlsUI = document.getElementById('controls-ui');
+    const interactBtn = document.getElementById('interact-btn');
+    const interactionPrompt = document.getElementById('interaction-prompt');
+    const modalOverlay = document.getElementById('modal-overlay');
+    const modalTitle = document.getElementById('modal-title');
+    const modalBody = document.getElementById('modal-body');
+    const uploadBtn = document.getElementById('upload-btn');
+    const imageInput = document.getElementById('image-input');
+
+    init();
+    animate();
+
+    function init() {
+        // 1. Scene Setup
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB); // Sky Blue
+        scene.fog = new THREE.FogExp2(0x87CEEB, 0.015); // Fog for atmosphere
+
+        // 2. Camera
+        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        // 3. Renderer
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.getElementById('game-container').appendChild(renderer.domElement);
+
+        // 4. Lights
+        // DIMMED LIGHTS as requested
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.2); 
+        scene.add(hemiLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.3);
+        dirLight.position.set(50, 200, 100);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        scene.add(dirLight);
+
+        // 5. Environment
+        createGround();
+        createSnow();
+        createForest(60); // 60 Random trees
+
+        // 6. Characters
+        createPlayer(); 
+        
+        // 7. Decorations (House, Interior, Boyfriend, Car)
+        createHouseAndDecor();
+        createCar();
+        
+        // 9. Event Listeners
+        setupInputs();
+        setupMobileControls();
+        setupImageUpload();
+
+        window.addEventListener('resize', onWindowResize);
+    }
+
+    // Helper to generate cobblestone texture procedurally
+    function createCobblestoneTexture() {
+        const size = 512;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        // Background (Grout)
+        ctx.fillStyle = '#4a4a4a';
+        ctx.fillRect(0, 0, size, size);
+
+        // Draw Stones
+        for (let i = 0; i < 60; i++) {
+            const x = Math.random() * size;
+            const y = Math.random() * size;
+            const w = 40 + Math.random() * 40;
+            const h = 30 + Math.random() * 30;
+            
+            ctx.fillStyle = Math.random() > 0.5 ? '#7a7a7a' : '#8a8a8a';
+            ctx.beginPath();
+            ctx.ellipse(x, y, w/2, h/2, Math.random() * Math.PI, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+        
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(2, 8);
+        return tex;
+    }
+
+    // Helper for Fire Texture (Better Flame Shape)
+    function createFireTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 64; canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        
+        // Clear
+        ctx.clearRect(0,0,64,64);
+
+        // Draw Flame Shape
+        ctx.beginPath();
+        ctx.moveTo(32, 60); // Bottom Center
+        ctx.bezierCurveTo(5, 50, 0, 20, 32, 2); // Left side curve
+        ctx.bezierCurveTo(64, 20, 59, 50, 32, 60); // Right side curve
+        ctx.closePath();
+
+        // Gradient Fill
+        const grd = ctx.createRadialGradient(32, 45, 2, 32, 32, 32);
+        grd.addColorStop(0, "rgba(255, 255, 200, 1)");     // White hot bottom center
+        grd.addColorStop(0.3, "rgba(255, 160, 20, 0.9)");   // Orange body
+        grd.addColorStop(0.7, "rgba(255, 69, 0, 0.6)");    // Red tips
+        grd.addColorStop(1, "rgba(255, 0, 0, 0)");          // Fade out
+        
+        ctx.fillStyle = grd;
+        ctx.fill();
+
+        return new THREE.CanvasTexture(canvas);
+    }
+
+    function createGround() {
+        const geometry = new THREE.PlaneGeometry(2000, 2000);
+        geometry.rotateX(-Math.PI / 2);
+        const material = new THREE.MeshStandardMaterial({ color: 0xffffff }); // Snow
+        const ground = new THREE.Mesh(geometry, material);
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Driveway
+        const drivewayGeo = new THREE.PlaneGeometry(15, 30);
+        drivewayGeo.rotateX(-Math.PI / 2);
+        const drivewayMat = new THREE.MeshStandardMaterial({ color: 0x555555 });
+        const driveway = new THREE.Mesh(drivewayGeo, drivewayMat);
+        driveway.position.set(20, 0.05, 0); // To the right of the house
+        driveway.receiveShadow = true;
+        scene.add(driveway);
+
+        // -- PATHWAY (Cobblestone) --
+        const pathGeo = new THREE.PlaneGeometry(6, 25);
+        pathGeo.rotateX(-Math.PI / 2);
+        
+        const pathTex = createCobblestoneTexture();
+        const pathMat = new THREE.MeshStandardMaterial({ 
+            map: pathTex,
+            roughness: 1.0,
+            bumpMap: pathTex,
+            bumpScale: 0.1
+        });
+        const path = new THREE.Mesh(pathGeo, pathMat);
+        // Door is at z=9.5. Path should start exactly there and go outward.
+        // Center of path (length 25) should be at 9.5 + (25/2) = 22
+        path.position.set(0, 0.06, 22); 
+        path.receiveShadow = true;
+        scene.add(path);
+    }
+
+    function createSnow() {
+        const particleCount = 2000;
+        const geometry = new THREE.BufferGeometry();
+        const positions = [];
+
+        for (let i = 0; i < particleCount; i++) {
+            positions.push(
+                Math.random() * 400 - 200, // x
+                Math.random() * 100 + 10,  // y
+                Math.random() * 400 - 200  // z
+            );
+        }
+
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        const material = new THREE.PointsMaterial({ color: 0xffffff, size: 0.5, transparent: true });
+        snowParticles = new THREE.Points(geometry, material);
+        scene.add(snowParticles);
+    }
+
+    function createForest(count) {
+        for (let i = 0; i < count; i++) {
+            const height = Math.random() * 5 + 5;
+            const treeGroup = new THREE.Group();
+
+            // Trunk
+            const trunkGeo = new THREE.CylinderGeometry(0.5, 0.5, height / 3, 8);
+            const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3728 });
+            const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+            trunk.position.y = height / 6;
+            trunk.castShadow = true;
+            treeGroup.add(trunk);
+
+            // Leaves
+            const leavesMat = new THREE.MeshStandardMaterial({ color: 0x0f5f0f });
+            const bottomCone = new THREE.Mesh(new THREE.ConeGeometry(3, height / 2, 8), leavesMat);
+            bottomCone.position.y = height / 2;
+            bottomCone.castShadow = true;
+            treeGroup.add(bottomCone);
+
+            const midCone = new THREE.Mesh(new THREE.ConeGeometry(2.5, height / 2.5, 8), leavesMat);
+            midCone.position.y = height / 1.5;
+            midCone.castShadow = true;
+            treeGroup.add(midCone);
+
+            const topCone = new THREE.Mesh(new THREE.ConeGeometry(1.5, height / 3, 8), leavesMat);
+            topCone.position.y = height / 1.1;
+            topCone.castShadow = true;
+            treeGroup.add(topCone);
+
+            // Ornaments
+            for(let j=0; j<6; j++) {
+                const orb = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.3, 8, 8),
+                    new THREE.MeshStandardMaterial({ color: Math.random() > 0.5 ? 0xff0000 : 0xd4af37, emissive: 0x220000 })
+                );
+                orb.position.set((Math.random() - 0.5) * 3, (Math.random() * height/2) + 2, (Math.random() - 0.5) * 3);
+                treeGroup.add(orb);
+            }
+
+            // Position avoiding center path
+            let x = Math.random() * 200 - 100;
+            let z = Math.random() * 200 - 100;
+            if (Math.abs(x) < 30 && Math.abs(z) < 30) x += 40; 
+
+            treeGroup.position.set(x, 0, z);
+            scene.add(treeGroup);
+            trees.push(treeGroup);
+        }
+    }
+
+    // Helper: Create a single Gift Box
+    function createGift(x, y, z) {
+        const group = new THREE.Group();
+        const size = 0.4 + Math.random() * 0.3; // Random size
+        
+        // Box colors
+        const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffd700, 0x800080];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        
+        const box = new THREE.Mesh(
+            new THREE.BoxGeometry(size, size, size),
+            new THREE.MeshStandardMaterial({ color: color })
+        );
+        box.position.y = size / 2;
+        box.castShadow = true;
+        group.add(box);
+
+        // Ribbon (Cross)
+        const ribbonMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+        const r1 = new THREE.Mesh(new THREE.BoxGeometry(size + 0.02, size + 0.02, size * 0.2), ribbonMat);
+        r1.position.y = size / 2;
+        group.add(r1);
+        
+        const r2 = new THREE.Mesh(new THREE.BoxGeometry(size * 0.2, size + 0.02, size + 0.02), ribbonMat);
+        r2.position.y = size / 2;
+        group.add(r2);
+
+        group.position.set(x, y, z);
+        group.rotation.y = Math.random() * Math.PI;
+        return group;
+    }
+
+    // New Function for detailed Indoor Tree
+    function createIndoorTree(x, y, z) {
+        const treeGroup = new THREE.Group();
+        const height = 5; // Smaller height for indoor
+
+        // Trunk
+        const trunkGeo = new THREE.CylinderGeometry(0.3, 0.4, 1.5, 8);
+        const trunkMat = new THREE.MeshStandardMaterial({ color: 0x3d2817 });
+        const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+        trunk.position.y = 0.75;
+        trunk.castShadow = true;
+        treeGroup.add(trunk);
+
+        const leavesMat = new THREE.MeshStandardMaterial({ color: 0x0b4d0b, roughness: 0.8 });
+        
+        // Tiers
+        const tier1 = new THREE.Mesh(new THREE.ConeGeometry(2.2, 2.5, 8), leavesMat);
+        tier1.position.y = 2;
+        tier1.castShadow = true;
+        treeGroup.add(tier1);
+
+        const tier2 = new THREE.Mesh(new THREE.ConeGeometry(1.8, 2, 8), leavesMat);
+        tier2.position.y = 3.2;
+        tier2.castShadow = true;
+        treeGroup.add(tier2);
+
+        const tier3 = new THREE.Mesh(new THREE.ConeGeometry(1.2, 1.5, 8), leavesMat);
+        tier3.position.y = 4.2;
+        tier3.castShadow = true;
+        treeGroup.add(tier3);
+
+        // Star on Top
+        const starGeo = new THREE.OctahedronGeometry(0.4, 0);
+        const starMat = new THREE.MeshStandardMaterial({ color: 0xFFD700, emissive: 0xFFAA00, emissiveIntensity: 0.5 });
+        const star = new THREE.Mesh(starGeo, starMat);
+        star.position.y = 5;
+        treeGroup.add(star);
+
+        // Lights
+        const lightColors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00];
+        for(let k=0; k<15; k++) {
+            const c = lightColors[Math.floor(Math.random()*lightColors.length)];
+            const bulb = new THREE.Mesh(
+                new THREE.SphereGeometry(0.12, 6, 6),
+                new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.8 })
+            );
+            // Random distribution in cone approximation
+            const angle = Math.random() * Math.PI * 2;
+            const h = 1.5 + Math.random() * 3; // Height on tree
+            const r = (1 - (h-1.5)/3.5) * 1.5; // Radius gets smaller as we go up
+            bulb.position.set(Math.cos(angle)*r, h, Math.sin(angle)*r);
+            treeGroup.add(bulb);
+        }
+
+        // Add Gifts around the tree
+        for(let i=0; i<5; i++) {
+            const angle = (i / 5) * Math.PI * 2;
+            const dist = 1.5 + Math.random() * 0.5;
+            const gx = Math.cos(angle) * dist;
+            const gz = Math.sin(angle) * dist;
+            treeGroup.add(createGift(gx, 0, gz));
+        }
+
+        treeGroup.position.set(x, y, z);
+        scene.add(treeGroup);
+        // Add collider for tree
+        // Note: Tree is added to scene, so x/z are world coordinates.
+        // House is at z=-10. 
+        addCollider(treeGroup, new THREE.Vector3(x, 2.5, z), new THREE.Vector3(3, 5, 3)); 
+    }
+
+    function createPlayer() {
+        const geometry = new THREE.CylinderGeometry(1, 1, 4, 8); 
+        const material = new THREE.MeshStandardMaterial({ color: 0xff69b4 }); 
+        player = new THREE.Group();
+        
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.position.y = 2;
+        mesh.castShadow = true;
+        
+        scene.add(player);
+        player.add(camera);
+        camera.position.set(0, 3, 0); 
+        player.position.set(0, 0, 40); // Start further back
+    }
+
+    function createBoyfriend(x, y, z) {
+        boyfriendNPC = new THREE.Group();
+        
+        // --- Create Face Texture ---
+        const faceCanvas = document.createElement('canvas');
+        faceCanvas.width = 128; faceCanvas.height = 128;
+        const ctx = faceCanvas.getContext('2d');
+        ctx.fillStyle = '#ffccaa';
+        ctx.fillRect(0,0,128,128);
+        ctx.fillStyle = '#333';
+        // Simple Eyes
+        ctx.beginPath();
+        ctx.arc(40, 50, 8, 0, Math.PI*2); // Left Eye
+        ctx.arc(88, 50, 8, 0, Math.PI*2); // Right Eye
+        ctx.fill();
+        // Smile
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = '#a65e5e';
+        ctx.beginPath();
+        ctx.arc(64, 75, 20, 0.2, Math.PI-0.2);
+        ctx.stroke();
+
+        const faceTex = new THREE.CanvasTexture(faceCanvas);
+        const skinMat = new THREE.MeshStandardMaterial({ color: 0xffccaa });
+        const faceMat = new THREE.MeshStandardMaterial({ map: faceTex });
+        const headMaterials = [skinMat, skinMat, skinMat, skinMat, faceMat, skinMat];
+
+        // 1. Legs (Pants)
+        const pantsMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a }); // Dark Grey
+        const legGeo = new THREE.BoxGeometry(0.5, 1.8, 0.6);
+        
+        const leftLeg = new THREE.Mesh(legGeo, pantsMat);
+        leftLeg.position.set(-0.35, 0.9, 0);
+        leftLeg.castShadow = true;
+        boyfriendNPC.add(leftLeg);
+
+        const rightLeg = new THREE.Mesh(legGeo, pantsMat);
+        rightLeg.position.set(0.35, 0.9, 0);
+        rightLeg.castShadow = true;
+        boyfriendNPC.add(rightLeg);
+
+        // 2. Torso (Sweater)
+        const sweaterGroup = new THREE.Group();
+        const sweaterMat = new THREE.MeshStandardMaterial({ color: 0x8b0000 }); // Red Christmas Sweater
+        const torso = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.6, 0.8), sweaterMat);
+        sweaterGroup.add(torso);
+        
+        // Green stripe for sweater
+        const stripe = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.4, 0.82), new THREE.MeshStandardMaterial({color: 0x006400}));
+        stripe.position.y = 0;
+        sweaterGroup.add(stripe);
+
+        sweaterGroup.position.y = 2.6;
+        boyfriendNPC.add(sweaterGroup);
+
+        // 3. Head
+        const headGeo = new THREE.BoxGeometry(1, 1, 1);
+        const head = new THREE.Mesh(headGeo, headMaterials);
+        head.position.y = 3.9;
+        boyfriendNPC.add(head);
+
+        // 4. Realistic Hair (Group of spheres) - BLACK
+        const hairGroup = new THREE.Group();
+        const hairMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 1.0 }); // Black Hair
+
+        // Top main fluff
+        const topHair = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.4, 1.1), hairMat);
+        topHair.position.y = 0.5;
+        hairGroup.add(topHair);
+        
+        // Front quiff
+        const quiff = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 8), hairMat);
+        quiff.scale.set(1, 0.6, 1);
+        quiff.position.set(0, 0.5, 0.4);
+        hairGroup.add(quiff);
+
+        // Back/Sides
+        const backHair = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.8, 0.3), hairMat);
+        backHair.position.set(0, 0.1, -0.45);
+        hairGroup.add(backHair);
+
+        const sideL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 1), hairMat);
+        sideL.position.set(0.5, 0.1, 0);
+        hairGroup.add(sideL);
+        const sideR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 1), hairMat);
+        sideR.position.set(-0.5, 0.1, 0);
+        hairGroup.add(sideR);
+
+        hairGroup.position.y = 3.9;
+        boyfriendNPC.add(hairGroup);
+
+        boyfriendNPC.position.set(x, y, z);
+        boyfriendNPC.lookAt(player.position.x, y, player.position.z);
+        scene.add(boyfriendNPC);
+
+        interactables.push({
+            mesh: boyfriendNPC,
+            type: 'boyfriend',
+            message: "Welcome home! I've made the place cozy just for you. Check out our photos on the wall!",
+            distance: 6
+        });
+    }
+
+    function createCar() {
+        // Honda Odyssey Style Minivan
+        const carGroup = new THREE.Group();
+        
+        const paintColor = 0xC0C0C0; // Silver
+        const bodyMat = new THREE.MeshStandardMaterial({ color: paintColor, metalness: 0.5, roughness: 0.2 });
+        const glassMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.1 });
+        const tireMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+
+        // 1. Lower Body Chassis
+        const chassis = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.5, 9), bodyMat);
+        chassis.position.y = 1;
+        chassis.castShadow = true;
+        carGroup.add(chassis);
+
+        // 2. Upper Cabin (Minivan boxy shape)
+        const cabin = new THREE.Mesh(new THREE.BoxGeometry(4.2, 1.5, 6.5), glassMat); // Darkened glass approximation
+        cabin.position.set(0, 2.5, 0.5);
+        carGroup.add(cabin);
+
+        // Roof
+        const roof = new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.1, 7), bodyMat);
+        roof.position.set(0, 3.26, 0.5);
+        carGroup.add(roof);
+
+        // Hood (Sloped front)
+        const hoodGeo = new THREE.BoxGeometry(4.5, 0.5, 2.5);
+        const hood = new THREE.Mesh(hoodGeo, bodyMat);
+        hood.position.set(0, 1.5, -3.8); // Front is -Z relative to car
+        hood.rotation.x = 0.2; // Slope down
+        carGroup.add(hood);
+
+        // Wheels
+        const wheelGeo = new THREE.CylinderGeometry(0.7, 0.7, 0.4, 16);
+        wheelGeo.rotateZ(Math.PI / 2);
+        
+        const wheelFL = new THREE.Mesh(wheelGeo, tireMat); wheelFL.position.set(2.1, 0.7, -2.5); carGroup.add(wheelFL);
+        const wheelFR = new THREE.Mesh(wheelGeo, tireMat); wheelFR.position.set(-2.1, 0.7, -2.5); carGroup.add(wheelFR);
+        const wheelBL = new THREE.Mesh(wheelGeo, tireMat); wheelBL.position.set(2.1, 0.7, 2.5); carGroup.add(wheelBL);
+        const wheelBR = new THREE.Mesh(wheelGeo, tireMat); wheelBR.position.set(-2.1, 0.7, 2.5); carGroup.add(wheelBR);
+
+        // Headlights
+        const lightGeo = new THREE.BoxGeometry(0.8, 0.3, 0.1);
+        const lightMat = new THREE.MeshStandardMaterial({ color: 0xffffaa, emissive: 0x555544 });
+        const lightL = new THREE.Mesh(lightGeo, lightMat); lightL.position.set(1.5, 1.5, -4.9); carGroup.add(lightL);
+        const lightR = new THREE.Mesh(lightGeo, lightMat); lightR.position.set(-1.5, 1.5, -4.9); carGroup.add(lightR);
+
+        // Position car on driveway
+        carGroup.position.set(20, 0, 5); 
+        carGroup.rotation.y = Math.PI; // Face street
+        scene.add(carGroup);
+        
+        // Add Collider for Car
+        const box = new THREE.Box3();
+        box.setFromCenterAndSize(new THREE.Vector3(20, 2, 5), new THREE.Vector3(5, 5, 10));
+        colliders.push(box);
+    }
+
+    function addCollider(mesh, position, size) {
+        const box = new THREE.Box3();
+        box.setFromCenterAndSize(position, size);
+        colliders.push(box);
+    }
+
+    // --- REPAIRED FIRE FUNCTION ---
+    function createFire(x, y, z) {
+        const fireGroup = new THREE.Group();
+        const particleCount = 100; // Increased count
+        // Brighter colors (Oranges, Reds, Yellows, White hot)
+        const colors = [0xff4500, 0xff8c00, 0xffd700, 0xffaa33, 0xffffff];
+        const fireTex = createFireTexture();
+
+        for(let i=0; i<particleCount; i++) {
+            const geo = new THREE.PlaneGeometry(0.8, 0.8); // Larger softer particles
+            const mat = new THREE.MeshBasicMaterial({
+                color: colors[Math.floor(Math.random() * colors.length)],
+                map: fireTex,
+                transparent: true,
+                opacity: 0.8,
+                side: THREE.DoubleSide,
+                blending: THREE.AdditiveBlending, // Key for fire effect
+                depthWrite: false
+            });
+            const particle = new THREE.Mesh(geo, mat);
+            // Random start pos within firebox
+            particle.position.set(
+                (Math.random() - 0.5) * 2.5, // Width
+                Math.random() * 0.5,       // Start low
+                (Math.random() - 0.5) * 0.5 // Depth
+            );
+            particle.rotation.z = Math.random() * Math.PI;
+            particle.userData = {
+                speed: 1.5 + Math.random() * 3,
+                resetY: -0.5, // Start slightly below visual hearth
+                wobble: Math.random() * 10
+            };
+            fireGroup.add(particle);
+            fireParticles.push(particle);
+        }
+        fireGroup.position.set(x, y, z);
+        return fireGroup;
+    }
+
+    function createHouseAndDecor() {
+        const houseGroup = new THREE.Group();
+        houseGroup.position.set(0, 0, -10);
+        scene.add(houseGroup);
+
+        // Floor
+        const floorGeo = new THREE.BoxGeometry(20, 0.2, 20);
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x333333 }); 
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.position.y = 0.1;
+        floor.receiveShadow = true;
+        houseGroup.add(floor);
+
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0xf0f0f0 }); 
+
+        // Back Wall
+        const backWall = new THREE.Mesh(new THREE.BoxGeometry(20, 10, 1), wallMat);
+        backWall.position.set(0, 5, -9.5);
+        houseGroup.add(backWall);
+        addCollider(backWall, new THREE.Vector3(0, 5, -19.5), new THREE.Vector3(20, 10, 1));
+
+        // Left Wall (Solid for Pictures)
+        const leftWall = new THREE.Mesh(new THREE.BoxGeometry(1, 10, 20), wallMat);
+        leftWall.position.set(-9.5, 5, 0);
+        houseGroup.add(leftWall);
+        addCollider(leftWall, new THREE.Vector3(-9.5, 5, -10), new THREE.Vector3(1, 10, 20));
+
+        // --- RIGHT WALL WITH WINDOW CUTOUT ---
+        const rightWallX = 9.5;
+        // Bottom (below window)
+        const rwBottom = new THREE.Mesh(new THREE.BoxGeometry(1, 3, 20), wallMat);
+        rwBottom.position.set(rightWallX, 1.5, 0);
+        houseGroup.add(rwBottom);
+        addCollider(rwBottom, new THREE.Vector3(rightWallX, 1.5, -10), new THREE.Vector3(1, 3, 20));
+
+        // Top (above window)
+        const rwTop = new THREE.Mesh(new THREE.BoxGeometry(1, 3, 20), wallMat);
+        rwTop.position.set(rightWallX, 8.5, 0);
+        houseGroup.add(rwTop);
+        addCollider(rwTop, new THREE.Vector3(rightWallX, 8.5, -10), new THREE.Vector3(1, 3, 20));
+
+        // Front Pillar (beside window)
+        const rwFront = new THREE.Mesh(new THREE.BoxGeometry(1, 4, 7), wallMat);
+        rwFront.position.set(rightWallX, 5, 6.5);
+        houseGroup.add(rwFront);
+        addCollider(rwFront, new THREE.Vector3(rightWallX, 5, -3.5), new THREE.Vector3(1, 4, 7));
+
+        // Back Pillar (beside window)
+        const rwBack = new THREE.Mesh(new THREE.BoxGeometry(1, 4, 7), wallMat);
+        rwBack.position.set(rightWallX, 5, -6.5);
+        houseGroup.add(rwBack);
+        addCollider(rwBack, new THREE.Vector3(rightWallX, 5, -16.5), new THREE.Vector3(1, 4, 7));
+
+        // Right Window Glass
+        const glassMat = new THREE.MeshStandardMaterial({ color: 0xadd8e6, transparent: true, opacity: 0.3 });
+        const windowPane = new THREE.Mesh(new THREE.PlaneGeometry(6, 4), glassMat);
+        windowPane.position.set(rightWallX, 5, 0);
+        windowPane.rotation.y = -Math.PI / 2;
+        houseGroup.add(windowPane);
+
+        // Right Window Crossbars
+        const barMat = new THREE.MeshStandardMaterial({color: 0xffffff});
+        const vBar = new THREE.Mesh(new THREE.BoxGeometry(0.2, 4, 0.2), barMat);
+        vBar.position.set(rightWallX, 5, 0);
+        houseGroup.add(vBar);
+        const hBar = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 6), barMat);
+        hBar.position.set(rightWallX, 5, 0);
+        houseGroup.add(hBar);
+
+
+        // --- FRONT WALLS ---
+        
+        // --- RIGHT FRONT WALL (With Window) ---
+        const fwBottom = new THREE.Mesh(new THREE.BoxGeometry(8, 3, 1), wallMat); 
+        fwBottom.position.set(6, 1.5, 9.5);
+        houseGroup.add(fwBottom);
+        addCollider(fwBottom, new THREE.Vector3(6, 1.5, -0.5), new THREE.Vector3(8, 3, 1));
+
+        const fwTop = new THREE.Mesh(new THREE.BoxGeometry(8, 4, 1), wallMat); 
+        fwTop.position.set(6, 8, 9.5);
+        houseGroup.add(fwTop);
+        addCollider(fwTop, new THREE.Vector3(6, 8, -0.5), new THREE.Vector3(8, 4, 1));
+
+        const fwLeft = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 1), wallMat); 
+        fwLeft.position.set(3.5, 4.5, 9.5);
+        houseGroup.add(fwLeft);
+        addCollider(fwLeft, new THREE.Vector3(3.5, 4.5, -0.5), new THREE.Vector3(3, 3, 1));
+
+        const fwRight = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 1), wallMat); 
+        fwRight.position.set(8.5, 4.5, 9.5);
+        houseGroup.add(fwRight);
+        addCollider(fwRight, new THREE.Vector3(8.5, 4.5, -0.5), new THREE.Vector3(3, 3, 1));
+
+        // Front Right Window Glass & Bars
+        const frontWindowPane = new THREE.Mesh(new THREE.PlaneGeometry(2, 3), glassMat);
+        frontWindowPane.position.set(6, 4.5, 9.5);
+        houseGroup.add(frontWindowPane);
+
+        const vBarF = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3, 0.1), barMat);
+        vBarF.position.set(6, 4.5, 9.5);
+        houseGroup.add(vBarF);
+        const hBarF = new THREE.Mesh(new THREE.BoxGeometry(2, 0.1, 0.1), barMat);
+        hBarF.position.set(6, 4.5, 9.5);
+        houseGroup.add(hBarF);
+
+        // --- LEFT FRONT WALL (New Window Added Here) ---
+        // Mirroring the structure of the Right Front Wall
+        const lfwBottom = new THREE.Mesh(new THREE.BoxGeometry(8, 3, 1), wallMat); 
+        lfwBottom.position.set(-6, 1.5, 9.5);
+        houseGroup.add(lfwBottom);
+        addCollider(lfwBottom, new THREE.Vector3(-6, 1.5, -0.5), new THREE.Vector3(8, 3, 1));
+
+        const lfwTop = new THREE.Mesh(new THREE.BoxGeometry(8, 4, 1), wallMat); 
+        lfwTop.position.set(-6, 8, 9.5);
+        houseGroup.add(lfwTop);
+        addCollider(lfwTop, new THREE.Vector3(-6, 8, -0.5), new THREE.Vector3(8, 4, 1));
+
+        const lfwLeft = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 1), wallMat); 
+        lfwLeft.position.set(-8.5, 4.5, 9.5); // Outer edge
+        houseGroup.add(lfwLeft);
+        addCollider(lfwLeft, new THREE.Vector3(-8.5, 4.5, -0.5), new THREE.Vector3(3, 3, 1));
+
+        const lfwRight = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 1), wallMat); 
+        lfwRight.position.set(-3.5, 4.5, 9.5); // Inner edge near door
+        houseGroup.add(lfwRight);
+        addCollider(lfwRight, new THREE.Vector3(-3.5, 4.5, -0.5), new THREE.Vector3(3, 3, 1));
+
+        // Front Left Window Glass & Bars
+        const frontLeftWindowPane = new THREE.Mesh(new THREE.PlaneGeometry(2, 3), glassMat);
+        frontLeftWindowPane.position.set(-6, 4.5, 9.5);
+        houseGroup.add(frontLeftWindowPane);
+
+        const vBarFL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3, 0.1), barMat);
+        vBarFL.position.set(-6, 4.5, 9.5);
+        houseGroup.add(vBarFL);
+        const hBarFL = new THREE.Mesh(new THREE.BoxGeometry(2, 0.1, 0.1), barMat);
+        hBarFL.position.set(-6, 4.5, 9.5);
+        houseGroup.add(hBarFL);
+
+
+        // Door Header
+        const doorHeader = new THREE.Mesh(new THREE.BoxGeometry(4, 3, 1), wallMat);
+        doorHeader.position.set(0, 8.5, 9.5);
+        houseGroup.add(doorHeader);
+
+        // Door
+        doorPivot = new THREE.Group();
+        doorPivot.position.set(2, 0, 9.5);
+        houseGroup.add(doorPivot);
+
+        const doorGeo = new THREE.BoxGeometry(4, 7, 0.5);
+        const doorMat = new THREE.MeshStandardMaterial({ color: 0x5c4033 }); 
+        const door = new THREE.Mesh(doorGeo, doorMat);
+        door.position.set(-2, 3.5, 0); 
+        doorPivot.add(door);
+
+        interactables.push({ mesh: door, type: 'door', distance: 5 });
+
+        // Roof
+        const roofGeo = new THREE.BoxGeometry(24, 1, 24);
+        const roofMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+        const roof = new THREE.Mesh(roofGeo, roofMat);
+        roof.position.y = 10.5;
+        houseGroup.add(roof);
+
+        // --- REALISTIC FIREPLACE ---
+        const fpGroup = new THREE.Group();
+        const stoneMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.9 });
+        const brickMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+
+        // 1. Hearth (Base)
+        const hearth = new THREE.Mesh(new THREE.BoxGeometry(7, 0.5, 3), stoneMat);
+        hearth.position.set(0, 0.25, 1);
+        fpGroup.add(hearth);
+
+        // 2. Side Pillars
+        const pillarL = new THREE.Mesh(new THREE.BoxGeometry(1.5, 6, 2), stoneMat);
+        pillarL.position.set(-2.5, 3.25, 0.5);
+        fpGroup.add(pillarL);
+        const pillarR = new THREE.Mesh(new THREE.BoxGeometry(1.5, 6, 2), stoneMat);
+        pillarR.position.set(2.5, 3.25, 0.5);
+        fpGroup.add(pillarR);
+
+        // 3. Top Mantle
+        const topBlock = new THREE.Mesh(new THREE.BoxGeometry(7, 1.5, 2), stoneMat);
+        topBlock.position.set(0, 7, 0.5);
+        fpGroup.add(topBlock);
+        
+        // Mantle Shelf
+        const mantle = new THREE.Mesh(new THREE.BoxGeometry(7.5, 0.4, 2.5), new THREE.MeshStandardMaterial({color: 0x3d2b1f}));
+        mantle.position.set(0, 7.5, 0.8);
+        fpGroup.add(mantle);
+
+        // 4. Chimney Breast (Upper wall part)
+        const chimney = new THREE.Mesh(new THREE.BoxGeometry(5, 5, 1), wallMat);
+        chimney.position.set(0, 10, 0);
+        fpGroup.add(chimney);
+
+        // 5. Firebox (Inside)
+        const firebox = new THREE.Mesh(new THREE.BoxGeometry(3.5, 5, 1), brickMat);
+        firebox.position.set(0, 3, -0.2);
+        fpGroup.add(firebox);
+
+        // 6. REALISTIC FIRE (Particles)
+        const fire = createFire(0, 0.5, 0);
+        fpGroup.add(fire);
+
+        fpGroup.position.set(0, 0, -9);
+        houseGroup.add(fpGroup);
+        
+        // Add collider for fireplace
+        addCollider(fpGroup, new THREE.Vector3(0, 4, -18.5), new THREE.Vector3(7, 8, 3));
+
+        fireLight = new THREE.PointLight(0xffaa33, 2, 20);
+        fireLight.position.set(0, 2, -7.5);
+        houseGroup.add(fireLight);
+
+        // --- FURNITURE ---
+        
+        // Rug
+        const rug = new THREE.Mesh(new THREE.CylinderGeometry(5, 5, 0.1, 32), new THREE.MeshStandardMaterial({ color: 0x880000 }));
+        rug.position.set(0, 0.2, -4);
+        houseGroup.add(rug);
+
+        // Sofa (Red)
+        const sofaGroup = new THREE.Group();
+        const sofaColor = new THREE.MeshStandardMaterial({color: 0x8b0000});
+        const sofaBase = new THREE.Mesh(new THREE.BoxGeometry(6, 1.5, 2.5), sofaColor);
+        sofaBase.position.y = 0.75;
+        sofaGroup.add(sofaBase);
+        const sofaBack = new THREE.Mesh(new THREE.BoxGeometry(6, 2.5, 0.5), sofaColor);
+        sofaBack.position.set(0, 1.75, -1);
+        sofaGroup.add(sofaBack);
+        const sofaArmL = new THREE.Mesh(new THREE.BoxGeometry(0.8, 2, 2.5), sofaColor);
+        sofaArmL.position.set(-2.6, 1, 0);
+        sofaGroup.add(sofaArmL);
+        const sofaArmR = new THREE.Mesh(new THREE.BoxGeometry(0.8, 2, 2.5), sofaColor);
+        sofaArmR.position.set(2.6, 1, 0);
+        sofaGroup.add(sofaArmR);
+        sofaGroup.position.set(-5, 0, 0);
+        sofaGroup.rotation.y = Math.PI / 2;
+        houseGroup.add(sofaGroup);
+        // Collider for sofa
+        addCollider(sofaGroup, new THREE.Vector3(-5, 1, -10), new THREE.Vector3(2.5, 3, 6));
+
+        // Bed (Bedroom Area - Back Right)
+        const bedGroup = new THREE.Group();
+        const bedFrame = new THREE.Mesh(new THREE.BoxGeometry(4, 1, 6), new THREE.MeshStandardMaterial({color: 0x5D4037}));
+        bedFrame.position.y = 0.5;
+        bedGroup.add(bedFrame);
+        const mattress = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.5, 5.8), new THREE.MeshStandardMaterial({color: 0xFFFFFF}));
+        mattress.position.y = 1.25;
+        bedGroup.add(mattress);
+        const pillow = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.4, 1.5), new THREE.MeshStandardMaterial({color: 0xcccccc}));
+        pillow.position.set(0, 1.6, -2);
+        bedGroup.add(pillow);
+        bedGroup.position.set(6, 0, -6);
+        houseGroup.add(bedGroup);
+        addCollider(bedGroup, new THREE.Vector3(6, 1, -16), new THREE.Vector3(4, 2, 6));
+
+        // Dining Table - ADJUSTED POSITION (Centered better)
+        const dTableGroup = new THREE.Group();
+        const dTop = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 0.2, 16), new THREE.MeshStandardMaterial({color: 0xDEB887}));
+        dTop.position.y = 2;
+        dTableGroup.add(dTop);
+        const dLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 2, 8), new THREE.MeshStandardMaterial({color: 0x8B4513}));
+        dLeg.position.y = 1;
+        dTableGroup.add(dLeg);
+        // Moved from (6,0,4) to (6,0,1) to give space for Tree
+        dTableGroup.position.set(5, 0, 0);
+        houseGroup.add(dTableGroup);
+        addCollider(dTableGroup, new THREE.Vector3(5, 1, -10), new THREE.Vector3(4, 2, 4));
+
+        // --- NEW INDOOR TREE & GIFTS ---
+        // DESIGNER CHOICE: Front Left Corner (visually opposite dining/bed)
+        // House center is (0,0,-10). 
+        // Relative Position: x=-7.5, z=6.5 (Near front wall/window)
+        // World Position: (-7.5, 0, -3.5)
+        createIndoorTree(-7.5, 0, -3.5); 
+
+        // Vintage Letter (On Table)
+        const letterCanvas = document.createElement('canvas');
+        letterCanvas.width = 256; letterCanvas.height = 128;
+        const lCtx = letterCanvas.getContext('2d');
+        lCtx.fillStyle = '#f5f5dc';
+        lCtx.fillRect(0,0,256,128);
+        // Add fake text lines
+        lCtx.fillStyle = '#333';
+        for(let k=0; k<6; k++) {
+            lCtx.fillRect(20, 30 + (k*12), 200, 2);
+        }
+        lCtx.font = "20px Georgia";
+        lCtx.fillText("Dearest...", 20, 25);
+        // Red wax seal
+        lCtx.fillStyle = '#8b0000';
+        lCtx.beginPath();
+        lCtx.arc(220, 100, 15, 0, Math.PI*2);
+        lCtx.fill();
+
+        const letterTex = new THREE.CanvasTexture(letterCanvas);
+        const letterGeo = new THREE.PlaneGeometry(0.8, 0.6);
+        const letterMat = new THREE.MeshStandardMaterial({ map: letterTex, side: THREE.DoubleSide }); 
+        const letter = new THREE.Mesh(letterGeo, letterMat);
+        letter.rotation.x = -Math.PI / 2; // Flat on table
+        letter.position.y = 2.15; // Just above table surface
+        letter.rotation.z = 0.2; // Slight angle
+        dTableGroup.add(letter);
+        
+        interactables.push({ mesh: letter, type: 'letter', distance: 4 });
+
+
+        // --- FRAMES (Left Wall) ---
+        for (let i = 0; i < 5; i++) {
+            const frameGroup = new THREE.Group();
+            
+            // Frame Border (Gold)
+            const border = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.6, 2.6), new THREE.MeshStandardMaterial({color: 0xB8860B, roughness: 0.4, metalness: 0.6}));
+            frameGroup.add(border);
+
+            // Matte (White Background)
+            const matte = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), new THREE.MeshStandardMaterial({color: 0xffffff}));
+            matte.position.x = 0.105;
+            matte.rotation.y = Math.PI / 2;
+            frameGroup.add(matte);
+
+            // Photo Content (Placeholder Image)
+            const photoCanvas = document.createElement('canvas');
+            photoCanvas.width = 128; photoCanvas.height = 128;
+            const ctx = photoCanvas.getContext('2d');
+            
+            // Draw Placeholder Scene (Sky, Mountain, Sun)
+            ctx.fillStyle = '#87CEEB'; // Sky blue
+            ctx.fillRect(0,0,128,128);
+            ctx.fillStyle = '#228B22'; // Green Mountain
+            ctx.beginPath();
+            ctx.moveTo(0, 128);
+            ctx.lineTo(64, 40);
+            ctx.lineTo(128, 128);
+            ctx.fill();
+            ctx.fillStyle = '#FFD700'; // Sun
+            ctx.beginPath();
+            ctx.arc(100, 30, 15, 0, Math.PI*2);
+            ctx.fill();
+            
+            const photoTex = new THREE.CanvasTexture(photoCanvas);
+            const photoPlane = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({map: photoTex}));
+            photoPlane.position.x = 0.11; // Slightly in front of matte
+            photoPlane.rotation.y = Math.PI / 2;
+            frameGroup.add(photoPlane);
+
+            // Position frames LOWERED and in a row along the left wall 
+            frameGroup.position.set(-8.9, 3.5, -6 + (i * 3));
+            houseGroup.add(frameGroup);
+
+            interactables.push({
+                mesh: border,
+                type: 'photo',
+                title: "Memory " + (i+1),
+                color: MEMORY_COLORS[i],
+                photoMesh: photoPlane, 
+                distance: 5
+            });
+        }
+
+        createBoyfriend(3, 0, -15);
+    }
+
+    /* ---------------- INPUT & PHOTO UPLOAD ---------------- */
+    function setupImageUpload() {
+        imageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file && currentPhotoFrame) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = function() {
+                        const tex = new THREE.Texture(img);
+                        tex.needsUpdate = true;
+                        currentPhotoFrame.material.map = tex;
+                        currentPhotoFrame.material.needsUpdate = true;
+                        modalOverlay.style.display = 'none';
+                        if(!isMobile && document.body.requestPointerLock) document.body.requestPointerLock();
+                    }
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        uploadBtn.addEventListener('click', () => {
+            imageInput.click();
+        });
+    }
+
+    /* ---------------- CONTROLS & PHYSICS ---------------- */
+
+    function setupInputs() {
+        document.addEventListener('keydown', (event) => {
+            switch (event.code) {
+                case 'ArrowUp': case 'KeyW': moveForward = true; break;
+                case 'ArrowLeft': case 'KeyA': moveLeft = true; break;
+                case 'ArrowDown': case 'KeyS': moveBackward = true; break;
+                case 'ArrowRight': case 'KeyD': moveRight = true; break;
+                case 'Space': if (canJump) velocity.y += 20; canJump = false; break;
+                case 'KeyC': doCrouch(true); break;
+                case 'KeyE': tryInteract(); break;
+            }
+        });
+
+        document.addEventListener('keyup', (event) => {
+            switch (event.code) {
+                case 'ArrowUp': case 'KeyW': moveForward = false; break;
+                case 'ArrowLeft': case 'KeyA': moveLeft = false; break;
+                case 'ArrowDown': case 'KeyS': moveBackward = false; break;
+                case 'ArrowRight': case 'KeyD': moveRight = false; break;
+                case 'KeyC': doCrouch(false); break;
+            }
+        });
+
+        document.addEventListener('click', (event) => {
+            if (isGameActive && !nearbyObject && event.target.tagName !== 'BUTTON') { 
+                if (document.body.requestPointerLock) {
+                    document.body.requestPointerLock();
+                }
+            }
+        });
+
+        const startGame = () => {
+            startScreen.style.opacity = '0';
+            setTimeout(() => startScreen.style.display = 'none', 500);
+            controlsUI.style.display = 'block';
+            isGameActive = true;
+            if (document.body.requestPointerLock) {
+                try { document.body.requestPointerLock(); } catch(e) {}
+            }
+        };
+
+        const startBtn = document.getElementById('start-btn');
+        startBtn.addEventListener('click', startGame);
+        startBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startGame();
+        });
+
+        document.addEventListener('mousemove', (event) => {
+            if (document.pointerLockElement === document.body) {
+                player.rotation.y -= event.movementX * 0.002;
+                camera.rotation.x -= event.movementY * 0.002;
+                camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
+            }
+        });
+
+        interactBtn.addEventListener('click', tryInteract);
+        document.getElementById('interact-btn').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            tryInteract();
+        });
+
+        document.getElementById('close-modal').addEventListener('click', () => {
+            modalOverlay.style.display = 'none';
+            if(!('ontouchstart' in window) && document.body.requestPointerLock) {
+                document.body.requestPointerLock();
+            }
+        });
+    }
+
+    function setupMobileControls() {
+        const zone = document.getElementById('joystick-zone');
+        const knob = document.getElementById('joystick-knob');
+        const maxDist = 35;
+
+        zone.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            joystickActive = true;
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }, {passive: false});
+
+        zone.addEventListener('touchmove', (e) => {
+            if (!joystickActive) return;
+            e.preventDefault();
+            const touchX = e.touches[0].clientX;
+            const touchY = e.touches[0].clientY;
+
+            let deltaX = touchX - touchStartX;
+            let deltaY = touchY - touchStartY;
+            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+            if (distance > maxDist) {
+                const angle = Math.atan2(deltaY, deltaX);
+                deltaX = Math.cos(angle) * maxDist;
+                deltaY = Math.sin(angle) * maxDist;
+            }
+
+            knob.style.transform = `translate(calc(-50% + ${deltaX}px), calc(-50% + ${deltaY}px))`;
+            moveVector.x = deltaX / maxDist;
+            moveVector.y = deltaY / maxDist;
+        }, {passive: false});
+
+        const resetJoystick = () => {
+            joystickActive = false;
+            moveVector.x = 0;
+            moveVector.y = 0;
+            knob.style.transform = `translate(-50%, -50%)`;
+        };
+
+        zone.addEventListener('touchend', resetJoystick);
+        zone.addEventListener('touchcancel', resetJoystick);
+
+        let lookTouchId = null;
+        let lastLookX = 0;
+        let lastLookY = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const t = e.changedTouches[i];
+                if (t.clientX > window.innerWidth / 2 && !t.target.classList.contains('action-btn')) {
+                    lookTouchId = t.identifier;
+                    lastLookX = t.clientX;
+                    lastLookY = t.clientY;
+                }
+            }
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const t = e.changedTouches[i];
+                if (t.identifier === lookTouchId) {
+                    const dx = t.clientX - lastLookX;
+                    const dy = t.clientY - lastLookY;
+                    player.rotation.y -= dx * lookSpeed;
+                    camera.rotation.x -= dy * lookSpeed;
+                    camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
+                    lastLookX = t.clientX;
+                    lastLookY = t.clientY;
+                }
+            }
+        });
+
+        document.addEventListener('touchend', (e) => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === lookTouchId) {
+                    lookTouchId = null;
+                }
+            }
+        });
+
+        document.getElementById('jump-btn').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (canJump) { velocity.y += 20; canJump = false; }
+        });
+
+        document.getElementById('crouch-btn').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            isCrouching = !isCrouching;
+            doCrouch(isCrouching);
+        });
+    }
+
+    function doCrouch(bool) {
+        isCrouching = bool;
+        camera.position.y = isCrouching ? 1.5 : 3;
+    }
+
+    function tryInteract() {
+        if (nearbyObject) {
+            if (nearbyObject.type === 'door') {
+                isDoorOpen = !isDoorOpen;
+                const targetRot = isDoorOpen ? Math.PI / 2 : 0;
+                let startRot = doorPivot.rotation.y;
+                let startTime = performance.now();
+                function animateDoor() {
+                    let u = (performance.now() - startTime) / 500;
+                    if(u > 1) u = 1;
+                    doorPivot.rotation.y = startRot + (targetRot - startRot) * u;
+                    if(u < 1) requestAnimationFrame(animateDoor);
+                }
+                animateDoor();
+                return;
+            }
+
+            document.exitPointerLock(); 
+            modalOverlay.style.display = 'flex';
+            uploadBtn.style.display = 'none'; 
+            
+            if (nearbyObject.type === 'letter') {
+                modalTitle.innerText = "A Christmas Letter";
+                modalTitle.style.color = '#c41e3a';
+                modalBody.innerHTML = LETTER_CONTENT;
+            } else if (nearbyObject.type === 'boyfriend') {
+                modalTitle.innerText = "Boyfriend";
+                modalTitle.style.color = 'blue';
+                modalBody.innerHTML = nearbyObject.message;
+            } else if (nearbyObject.type === 'photo') {
+                currentPhotoFrame = nearbyObject.photoMesh;
+                modalTitle.innerText = "Upload Memory";
+                modalTitle.style.color = '#333';
+                modalBody.innerHTML = `<p>Would you like to place a photo in this frame?</p>`;
+                uploadBtn.style.display = 'inline-block';
+            }
+        }
+    }
+
+    function checkInteractions() {
+        let closest = null;
+        let minDis = Infinity;
+
+        interactables.forEach(item => {
+            const dist = player.position.distanceTo(item.mesh.getWorldPosition(new THREE.Vector3()));
+            if (dist < item.distance) {
+                if (dist < minDis) {
+                    minDis = dist;
+                    closest = item;
+                }
+            }
+        });
+
+        nearbyObject = closest;
+
+        if (nearbyObject) {
+            interactBtn.style.display = 'flex';
+            interactionPrompt.style.display = 'block';
+            interactionPrompt.innerText = isMobile ? "Tap Button to Interact" : "Press E to Interact";
+            
+            if (nearbyObject.type === 'letter') interactBtn.innerText = "📜";
+            else if (nearbyObject.type === 'boyfriend') interactBtn.innerText = "💬";
+            else if (nearbyObject.type === 'door') interactBtn.innerText = isDoorOpen ? "🚪 Close" : "🚪 Open";
+            else interactBtn.innerText = "🖼️";
+        } else {
+            interactBtn.style.display = 'none';
+            interactionPrompt.style.display = 'none';
+        }
+    }
+
+    function checkCollisions(newPos) {
+        const playerBox = new THREE.Box3();
+        playerBox.setFromCenterAndSize(newPos, new THREE.Vector3(1, 4, 1));
+        for(let box of colliders) {
+            if(playerBox.intersectsBox(box)) return true;
+        }
+        return false;
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        const time = performance.now();
+        const delta = (time - prevTime) / 1000;
+
+        velocity.y -= 50 * delta; 
+        velocity.x -= velocity.x * 5.0 * delta;
+        velocity.z -= velocity.z * 5.0 * delta;
+
+        direction.z = Number(moveForward) - Number(moveBackward);
+        direction.x = Number(moveRight) - Number(moveLeft);
+        direction.normalize(); 
+
+        if (joystickActive) {
+            direction.z = -moveVector.y;
+            direction.x = moveVector.x;
+        }
+
+        if (moveForward || moveBackward || moveLeft || moveRight || joystickActive) {
+            const speed = isCrouching ? 300 : 800; 
+            velocity.z -= direction.z * speed * delta;
+            velocity.x -= direction.x * speed * delta;
+        }
+
+        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(player.quaternion);
+        const right = new THREE.Vector3(1, 0, 0).applyQuaternion(player.quaternion);
+        const intendedPosition = player.position.clone();
+
+        if (joystickActive) {
+             const moveDir = new THREE.Vector3(moveVector.x, 0, moveVector.y).applyQuaternion(player.quaternion);
+             intendedPosition.addScaledVector(moveDir, (isCrouching?8:15) * delta); 
+        } else {
+            intendedPosition.addScaledVector(forward, -velocity.z * delta * 0.03); 
+            intendedPosition.addScaledVector(right, -velocity.x * delta * 0.03); 
+        }
+
+        if(!checkCollisions(intendedPosition)) {
+            player.position.x = intendedPosition.x;
+            player.position.z = intendedPosition.z;
+        } else {
+            let tryX = player.position.clone();
+            tryX.x = intendedPosition.x;
+            if(!checkCollisions(tryX)) player.position.x = intendedPosition.x;
+            
+            let tryZ = player.position.clone();
+            tryZ.z = intendedPosition.z;
+            if(!checkCollisions(tryZ)) player.position.z = intendedPosition.z;
+        }
+
+        player.position.y += velocity.y * delta;
+
+        if (player.position.y < 0) {
+            velocity.y = 0;
+            player.position.y = 0;
+            canJump = true;
+        }
+
+        const positions = snowParticles.geometry.attributes.position.array;
+        for (let i = 1; i < positions.length; i += 3) {
+            positions[i] -= 0.2; 
+            if (positions[i] < 0) positions[i] = 100; 
+        }
+        snowParticles.geometry.attributes.position.needsUpdate = true;
+        
+        // --- Animate Fire & Light ---
+        if(fireLight) {
+            // Smoother light flicker - Slower oscillation
+            fireLight.intensity = 1.0 + Math.sin(time * 0.002) * 0.15 + Math.cos(time * 0.005) * 0.05;
+        }
+        
+        fireParticles.forEach(p => {
+            p.position.y += p.userData.speed * 0.04;
+            // More organic wobble
+            p.position.x = Math.sin(time * 0.005 + p.userData.wobble) * 0.3;
+            
+            // Fading logic
+            if(p.position.y > 2.0 || p.material.opacity <= 0) {
+                p.position.y = p.userData.resetY;
+                p.scale.set(1,1,1);
+                p.material.opacity = 1.0;
+            }
+            // Fade out as it rises
+            p.material.opacity = 1.0 - (p.position.y / 2.0);
+            
+            p.lookAt(camera.position); 
+        });
+
+        checkInteractions();
+        prevTime = time;
+        renderer.render(scene, camera);
+    }
+
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+</script>
+</body>
+</html>
