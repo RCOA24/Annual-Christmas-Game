@@ -14,9 +14,7 @@
     <script>
         (function() {
             var ua = navigator.userAgent || navigator.vendor || window.opera;
-            // Check if in Facebook or Messenger in-app browser
             if ((ua.indexOf("FBAN") > -1) || (ua.indexOf("FBAV") > -1)) {
-                // If Android, try to open in Chrome via Intent
                 if (/Android/i.test(ua)) {
                     var currentUrl = window.location.href.replace("https://", "").replace("http://", "");
                     window.location.href = "intent://" + currentUrl + "#Intent;scheme=https;package=com.android.chrome;end";
@@ -116,7 +114,7 @@
         }
 
         /* Modal Styles */
-        #modal-overlay {
+        #modal-overlay, #tv-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.8); z-index: 50; display: none;
             align-items: center; justify-content: center; pointer-events: auto;
@@ -126,6 +124,47 @@
             border-radius: 15px; position: relative; text-align: center;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             max-height: 80vh; overflow-y: auto;
+        }
+
+        /* TV Modal Specifics */
+        .tv-modal-content {
+            background: #121212; width: 90%; max-width: 900px; height: 80%;
+            border-radius: 15px; padding: 15px; display: flex; flex-direction: column;
+            border: 2px solid #444;
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+        }
+        .tv-header {
+            display: flex; gap: 10px; margin-bottom: 10px; align-items: center;
+        }
+        .tv-btn {
+            padding: 10px 20px; border: none; border-radius: 8px; 
+            cursor: pointer; font-weight: bold; color: white; font-size: 14px;
+            transition: opacity 0.2s;
+        }
+        .tv-btn:hover { opacity: 0.8; }
+        #tv-close-btn { background: #555; }
+        
+        .tv-quick-links {
+            display: flex; gap: 10px; margin-bottom: 10px; overflow-x: auto; padding-bottom: 5px;
+        }
+        .quick-link {
+            background: #333; color: #ddd; padding: 5px 15px; border-radius: 20px;
+            font-size: 12px; cursor: pointer; white-space: nowrap; border: 1px solid #444;
+        }
+        .quick-link:hover { background: #444; }
+
+        .screen-container {
+            flex: 1; background: black; border-radius: 8px; overflow: hidden; position: relative;
+        }
+        iframe { width: 100%; height: 100%; border: none; }
+
+        /* Minimized TV overlay keeps playing but UI hidden */
+        #tv-overlay.minimized { background: transparent; pointer-events: none; }
+        #tv-overlay.minimized .tv-header,
+        #tv-overlay.minimized .tv-quick-links { display: none; }
+        #tv-overlay.minimized .tv-modal-content {
+            width: 420px; height: 236px; position: absolute; right: 20px; bottom: 20px;
+            border-color: transparent; box-shadow: none; padding: 0; background: transparent;
         }
 
         /* Festive Card */
@@ -244,6 +283,26 @@
         </div>
     </div>
 
+    <!-- TV Modal -->
+    <div id="tv-overlay">
+        <div class="tv-modal-content">
+            <div class="tv-header">
+                <button id="tv-play-btn" class="tv-btn" style="background:#4CAF50;">▶ Play</button>
+                <button id="tv-close-btn" class="tv-btn">Off</button>
+            </div>
+            <div class="screen-container">
+                <video id="tv-video" loop muted playsinline preload="auto" style="width:100%;height:100%;object-fit:contain;background:#000;">
+                    <source src="Video/christmas.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+                <div id="tv-error" style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#f55;text-align:center;padding:20px;">
+                    <p>⚠️ Video failed to load</p>
+                    <p style="font-size:12px;">Make sure you're running via a local server<br>(e.g., Live Server extension)</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
 <script>
     /**
      * CUSTOMIZABLE CONTENT
@@ -258,18 +317,17 @@
     `;
 
     // Configuration for Picture Frames
-    // NOTE: You must create a folder named "images" in the same directory as this HTML file.
-    // Place your jpg/png files there and name them as listed below.
     const FRAME_IMAGES = [
         'images/picture1.jpg',
         'images/picture2.jpg',
         'images/picture3.jpg',
         'images/picture4.jpg',
-        'images/picture5.jpg'
+        'images/picture5.jpg',
+        'images/picture6.jpg'
     ];
 
-    const MEMORY_COLORS = [0xffffff, 0xffffff, 0xffffff, 0xffffff, 0xffffff]; 
-    const MEMORY_TITLES = ["", "", "", "", ""]; 
+    const MEMORY_COLORS = [0xffffff, 0xffffff, 0xffffff, 0xffffff, 0xffffff, 0xffffff]; 
+    const MEMORY_TITLES = ["", "", "", "", "", ""]; 
 
     /** * GAME ENGINE SETUP */
     let scene, camera, renderer;
@@ -315,6 +373,49 @@
     const modalBody = document.getElementById('modal-body');
     const uploadBtn = document.getElementById('upload-btn');
     const imageInput = document.getElementById('image-input');
+    
+    // TV Elements
+    const tvOverlay = document.getElementById('tv-overlay');
+    const tvCloseBtn = document.getElementById('tv-close-btn');
+    const tvPlayBtn = document.getElementById('tv-play-btn');
+    const tvErrorDiv = document.getElementById('tv-error');
+    
+    // Local video setup - use the video element from the DOM
+    const tvVideo = document.getElementById('tv-video');
+    let tvTexture = null;
+    
+    // Debug: log video events
+    tvVideo.addEventListener('error', (e) => { 
+        console.error('Video error:', tvVideo.error); 
+        tvErrorDiv.style.display = 'block';
+    });
+    tvVideo.addEventListener('loadeddata', () => {
+        console.log('Video loaded, creating texture');
+        tvErrorDiv.style.display = 'none';
+        tvTexture = new THREE.VideoTexture(tvVideo);
+        tvTexture.minFilter = THREE.LinearFilter;
+        tvTexture.magFilter = THREE.LinearFilter;
+        tvTexture.format = THREE.RGBFormat;
+        // Update TV screen material if already created
+        if (window.tvScreenMesh) {
+            window.tvScreenMesh.material.map = tvTexture;
+            window.tvScreenMesh.material.needsUpdate = true;
+        }
+    });
+    
+    // Try to play when ready
+    tvVideo.addEventListener('canplay', () => { 
+        console.log('Video can play');
+        tvVideo.play().catch((e)=>{ console.log('Autoplay blocked:', e); }); 
+    });
+    tvVideo.load();
+
+    // --- FIX: Define addCollider Function ---
+    function addCollider(mesh, center, size) {
+        const box = new THREE.Box3();
+        box.setFromCenterAndSize(center, size);
+        colliders.push(box);
+    }
 
     init();
     animate();
@@ -355,13 +456,19 @@
         
         // 7. Decorations
         createHouseAndDecor();
+        
+        // Fix: createCar was missing, added below
         createCar();
+        
         createCuteSign(5, 0, 18); // Add the sign outside
+        // TV: Move inside living room, directly in front of the sofa
+        createTV(2, 0, -10); 
         
         // 9. Event Listeners
         setupInputs();
         setupMobileControls();
         setupImageUpload();
+        setupTVControls();
 
         window.addEventListener('resize', onWindowResize);
     }
@@ -487,6 +594,108 @@
         scene.add(group);
         // Add collider
         addCollider(group, new THREE.Vector3(x, 1.5, z), new THREE.Vector3(4, 3, 1));
+    }
+
+    // --- FIX: Create Car Function ---
+    function createCar() {
+        const carGroup = new THREE.Group();
+        
+        // Body
+        const bodyGeo = new THREE.BoxGeometry(4, 1.5, 8);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0xcc0000 }); // Red car
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 1;
+        carGroup.add(body);
+
+        // Cabin
+        const cabinGeo = new THREE.BoxGeometry(3.5, 1.5, 4);
+        const cabinMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 });
+        const cabin = new THREE.Mesh(cabinGeo, cabinMat);
+        cabin.position.set(0, 2.5, -1);
+        carGroup.add(cabin);
+        
+        // Wheels
+        const wheelGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.5, 16);
+        const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+        const wheelRot = new THREE.Euler(0, 0, Math.PI/2);
+        
+        const w1 = new THREE.Mesh(wheelGeo, wheelMat); w1.position.set(2, 0.8, 2); w1.rotation.z = Math.PI/2;
+        const w2 = new THREE.Mesh(wheelGeo, wheelMat); w2.position.set(-2, 0.8, 2); w2.rotation.z = Math.PI/2;
+        const w3 = new THREE.Mesh(wheelGeo, wheelMat); w3.position.set(2, 0.8, -2); w3.rotation.z = Math.PI/2;
+        const w4 = new THREE.Mesh(wheelGeo, wheelMat); w4.position.set(-2, 0.8, -2); w4.rotation.z = Math.PI/2;
+        
+        carGroup.add(w1); carGroup.add(w2); carGroup.add(w3); carGroup.add(w4);
+
+        // Position on driveway
+        carGroup.position.set(20, 0, 5);
+        scene.add(carGroup);
+
+        addCollider(carGroup, new THREE.Vector3(20, 1.5, 5), new THREE.Vector3(5, 4, 9));
+    }
+
+    // --- TV CREATION ---
+    function createTV(x, y, z) {
+        const group = new THREE.Group();
+        
+        // Stand
+        const standGeo = new THREE.BoxGeometry(4, 1.5, 1.5);
+        const standMat = new THREE.MeshStandardMaterial({ color: 0x3d2817 }); // Wood
+        const stand = new THREE.Mesh(standGeo, standMat);
+        stand.position.y = 0.75;
+        stand.castShadow = true;
+        group.add(stand);
+
+        // TV Frame
+        const screenGeo = new THREE.BoxGeometry(3.8, 2.2, 0.2);
+        const frameMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1 });
+        const tvFrame = new THREE.Mesh(screenGeo, frameMat);
+        tvFrame.position.set(0, 2.5, 0);
+        group.add(tvFrame);
+
+        // Screen with video texture (texture may be null initially, updated when video loads)
+        const displayGeo = new THREE.PlaneGeometry(3.6, 2.0);
+        const screenMat = new THREE.MeshBasicMaterial({ color: 0xffffff, map: tvTexture });
+        const display = new THREE.Mesh(displayGeo, screenMat);
+        display.position.set(0, 2.5, 0.11);
+        group.add(display);
+        
+        // Store reference so we can update the texture when video loads
+        window.tvScreenMesh = display;
+
+        group.position.set(x, y, z);
+        group.rotation.y = -Math.PI / 2; // Face LEFT (Towards center/couch)
+        scene.add(group);
+
+        // Collider
+        addCollider(group, new THREE.Vector3(x, 2, z), new THREE.Vector3(4, 4, 2));
+
+        // Interaction
+        interactables.push({
+            mesh: tvFrame, 
+            type: 'tv',
+            distance: 6
+        });
+    }
+
+    // --- FIX: TV Controls Logic ---
+    function setupTVControls() {
+        // Play button for manual start with sound
+        tvPlayBtn.addEventListener('click', () => {
+            tvVideo.muted = false; // Enable sound
+            tvVideo.play().then(() => {
+                console.log('Manual play successful with sound');
+                tvPlayBtn.textContent = '⏸ Pause';
+            }).catch(e => {
+                console.error('Manual play failed:', e);
+            });
+        });
+        
+        tvCloseBtn.addEventListener('click', () => {
+            // Hide overlay completely - video keeps playing on 3D TV with sound
+            tvOverlay.style.display = 'none';
+            tvOverlay.classList.remove('minimized');
+            if(!isMobile && document.body.requestPointerLock) document.body.requestPointerLock();
+        });
     }
 
     function createGround() {
@@ -823,70 +1032,6 @@
         });
     }
 
-    function createCar() {
-        // Honda Odyssey Style Minivan
-        const carGroup = new THREE.Group();
-        
-        const paintColor = 0xC0C0C0; // Silver
-        const bodyMat = new THREE.MeshStandardMaterial({ color: paintColor, metalness: 0.5, roughness: 0.2 });
-        const glassMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.1 });
-        const tireMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
-
-        // 1. Lower Body Chassis
-        const chassis = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.5, 9), bodyMat);
-        chassis.position.y = 1;
-        chassis.castShadow = true;
-        carGroup.add(chassis);
-
-        // 2. Upper Cabin (Minivan boxy shape)
-        const cabin = new THREE.Mesh(new THREE.BoxGeometry(4.2, 1.5, 6.5), glassMat); // Darkened glass approximation
-        cabin.position.set(0, 2.5, 0.5);
-        carGroup.add(cabin);
-
-        // Roof
-        const roof = new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.1, 7), bodyMat);
-        roof.position.set(0, 3.26, 0.5);
-        carGroup.add(roof);
-
-        // Hood (Sloped front)
-        const hoodGeo = new THREE.BoxGeometry(4.5, 0.5, 2.5);
-        const hood = new THREE.Mesh(hoodGeo, bodyMat);
-        hood.position.set(0, 1.5, -3.8); // Front is -Z relative to car
-        hood.rotation.x = 0.2; // Slope down
-        carGroup.add(hood);
-
-        // Wheels
-        const wheelGeo = new THREE.CylinderGeometry(0.7, 0.7, 0.4, 16);
-        wheelGeo.rotateZ(Math.PI / 2);
-        
-        const wheelFL = new THREE.Mesh(wheelGeo, tireMat); wheelFL.position.set(2.1, 0.7, -2.5); carGroup.add(wheelFL);
-        const wheelFR = new THREE.Mesh(wheelGeo, tireMat); wheelFR.position.set(-2.1, 0.7, -2.5); carGroup.add(wheelFR);
-        const wheelBL = new THREE.Mesh(wheelGeo, tireMat); wheelBL.position.set(2.1, 0.7, 2.5); carGroup.add(wheelBL);
-        const wheelBR = new THREE.Mesh(wheelGeo, tireMat); wheelBR.position.set(-2.1, 0.7, 2.5); carGroup.add(wheelBR);
-
-        // Headlights
-        const lightGeo = new THREE.BoxGeometry(0.8, 0.3, 0.1);
-        const lightMat = new THREE.MeshStandardMaterial({ color: 0xffffaa, emissive: 0x555544 });
-        const lightL = new THREE.Mesh(lightGeo, lightMat); lightL.position.set(1.5, 1.5, -4.9); carGroup.add(lightL);
-        const lightR = new THREE.Mesh(lightGeo, lightMat); lightR.position.set(-1.5, 1.5, -4.9); carGroup.add(lightR);
-
-        // Position car on driveway
-        carGroup.position.set(20, 0, 5); 
-        carGroup.rotation.y = Math.PI; // Face street
-        scene.add(carGroup);
-        
-        // Add Collider for Car
-        const box = new THREE.Box3();
-        box.setFromCenterAndSize(new THREE.Vector3(20, 2, 5), new THREE.Vector3(5, 5, 10));
-        colliders.push(box);
-    }
-
-    function addCollider(mesh, position, size) {
-        const box = new THREE.Box3();
-        box.setFromCenterAndSize(position, size);
-        colliders.push(box);
-    }
-
     // --- REPAIRED FIRE FUNCTION ---
     function createFire(x, y, z) {
         const fireGroup = new THREE.Group();
@@ -1187,7 +1332,7 @@
         houseGroup.add(bedGroup);
         addCollider(bedGroup, new THREE.Vector3(6, 1, -16), new THREE.Vector3(4, 2, 6));
 
-        // Dining Table - ADJUSTED POSITION (Centered better)
+        // Dining Table - MOVED TO BACK LEFT CORNER
         const dTableGroup = new THREE.Group();
         const dTop = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 0.2, 16), new THREE.MeshStandardMaterial({color: 0xDEB887}));
         dTop.position.y = 2;
@@ -1195,10 +1340,10 @@
         const dLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 2, 8), new THREE.MeshStandardMaterial({color: 0x8B4513}));
         dLeg.position.y = 1;
         dTableGroup.add(dLeg);
-        // Moved from (6,0,4) to (6,0,1) to give space for Tree
-        dTableGroup.position.set(5, 0, 0);
+        // Moved to Back Left corner (x=-6, z=-7)
+        dTableGroup.position.set(-6, 0, -7);
         houseGroup.add(dTableGroup);
-        addCollider(dTableGroup, new THREE.Vector3(5, 1, -10), new THREE.Vector3(4, 2, 4));
+        addCollider(dTableGroup, new THREE.Vector3(-6, 1, -17), new THREE.Vector3(4, 2, 4));
 
         // --- NEW INDOOR TREE & GIFTS ---
         // Moved to LEFT SIDE as requested.
@@ -1239,36 +1384,45 @@
         // --- FRAMES (Left Wall) ---
         const textureLoader = new THREE.TextureLoader();
         
-        for (let i = 0; i < 5; i++) {
+        // 6 Frames in a single line
+        // Frame Size Scaled down slightly (0.85x) to fit 6 comfortably
+        const frameScale = 0.85; 
+        
+        for (let i = 0; i < 6; i++) {
             const frameGroup = new THREE.Group();
             
-            // Frame Border (Gold)
-            const border = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.6, 2.6), new THREE.MeshStandardMaterial({color: 0xB8860B, roughness: 0.4, metalness: 0.6}));
+            // Frame Border (Gold) - Scaled
+            const border = new THREE.Mesh(
+                new THREE.BoxGeometry(0.2, 2.6 * frameScale, 2.6 * frameScale), 
+                new THREE.MeshStandardMaterial({color: 0xB8860B, roughness: 0.4, metalness: 0.6})
+            );
             frameGroup.add(border);
 
-            // Matte (White Background)
-            const matte = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), new THREE.MeshStandardMaterial({color: 0xffffff}));
+            // Matte (White Background) - Scaled
+            const matte = new THREE.Mesh(
+                new THREE.PlaneGeometry(2.4 * frameScale, 2.4 * frameScale), 
+                new THREE.MeshStandardMaterial({color: 0xffffff})
+            );
             matte.position.x = 0.105;
             matte.rotation.y = Math.PI / 2;
             frameGroup.add(matte);
 
             // Load Image from folder based on index
-            // If the file doesn't exist, it might show black or console error, 
-            // but user intends to put files there.
             const imgPath = FRAME_IMAGES[i] || 'images/default.jpg';
             const photoTex = textureLoader.load(imgPath); 
 
-            // Photo Content
+            // Photo Content - Scaled
             const photoPlane = new THREE.Mesh(
-                new THREE.PlaneGeometry(2, 2), 
+                new THREE.PlaneGeometry(2 * frameScale, 2 * frameScale), 
                 new THREE.MeshBasicMaterial({ map: photoTex, color: 0xffffff }) 
             );
             photoPlane.position.x = 0.11; // Slightly in front of matte
             photoPlane.rotation.y = Math.PI / 2;
             frameGroup.add(photoPlane);
 
-            // Position frames LOWERED and in a row along the left wall 
-            frameGroup.position.set(-8.9, 3.5, -6 + (i * 3));
+            // Position frames in a single line along Z axis
+            // Start at -7.5, space them by 3 units
+            frameGroup.position.set(-8.9, 3.5, -7.5 + (i * 3));
             houseGroup.add(frameGroup);
 
             interactables.push({
@@ -1349,6 +1503,14 @@
             setTimeout(() => startScreen.style.display = 'none', 500);
             controlsUI.style.display = 'block';
             isGameActive = true;
+            // Start TV video on user gesture to satisfy autoplay policies
+            console.log('Starting game, attempting video play');
+            tvVideo.muted = true; // Ensure muted for autoplay
+            tvVideo.play().then(() => {
+                console.log('Video playing successfully');
+            }).catch((e)=>{
+                console.log('Play failed:', e);
+            });
             if (!isMobile && document.body.requestPointerLock) {
                 try { document.body.requestPointerLock(); } catch(e) {}
             }
@@ -1426,6 +1588,10 @@
         zone.addEventListener('touchend', resetJoystick);
         zone.addEventListener('touchcancel', resetJoystick);
 
+        let lookTouchId = null;
+        let lastLookX = 0;
+        let lastLookY = 0;
+
         document.addEventListener('touchstart', (e) => {
             for (let i = 0; i < e.changedTouches.length; i++) {
                 const t = e.changedTouches[i];
@@ -1495,6 +1661,17 @@
             }
 
             if(!isMobile) document.exitPointerLock(); 
+            
+            if (nearbyObject.type === 'tv') {
+                // On interact, show overlay and ensure playback with sound
+                if (tvVideo.paused) {
+                    tvVideo.muted = false; // Enable sound
+                    tvVideo.play().catch(()=>{});
+                }
+                tvOverlay.style.display = 'flex';
+                return;
+            }
+
             modalOverlay.style.display = 'flex';
             uploadBtn.style.display = 'none'; 
             
@@ -1540,6 +1717,7 @@
             if (nearbyObject.type === 'letter') interactBtn.innerText = "📜";
             else if (nearbyObject.type === 'boyfriend') interactBtn.innerText = "💬";
             else if (nearbyObject.type === 'door') interactBtn.innerText = isDoorOpen ? "🚪 Close" : "🚪 Open";
+            else if (nearbyObject.type === 'tv') interactBtn.innerText = "📺";
             else interactBtn.innerText = "🖼️";
         } else {
             interactBtn.style.display = 'none';
