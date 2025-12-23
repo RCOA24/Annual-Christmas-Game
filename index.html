@@ -204,6 +204,7 @@
     let trees = [], snowParticles, interactables = [], cats = [];
     let fireParticles = []; // For fire animation
     let fireLight; // Global ref to fire light for flickering
+    let starLight; // Global ref to tree star light
     let colliders = []; // Array of Box3 for collision
     let doorPivot; // For animating the door
     let isDoorOpen = false;
@@ -333,8 +334,8 @@
         // Draw Flame Shape
         ctx.beginPath();
         ctx.moveTo(32, 60); // Bottom Center
-        ctx.bezierCurveTo(5, 50, 0, 20, 32, 2); // Left side curve
-        ctx.bezierCurveTo(64, 20, 59, 50, 32, 60); // Right side curve
+        ctx.bezierCurveTo(10, 50, 5, 20, 32, 2); // Left side curve
+        ctx.bezierCurveTo(60, 20, 54, 50, 32, 60); // Right side curve
         ctx.closePath();
 
         // Gradient Fill
@@ -519,12 +520,19 @@
         tier3.castShadow = true;
         treeGroup.add(tier3);
 
-        // Star on Top
+        // Star on Top with Glow
         const starGeo = new THREE.OctahedronGeometry(0.4, 0);
-        const starMat = new THREE.MeshStandardMaterial({ color: 0xFFD700, emissive: 0xFFAA00, emissiveIntensity: 0.5 });
+        const starMat = new THREE.MeshStandardMaterial({ color: 0xFFD700, emissive: 0xFFAA00, emissiveIntensity: 0.8 });
         const star = new THREE.Mesh(starGeo, starMat);
         star.position.y = 5;
+        // Subtle Pulse Animation handled in loop
+        star.name = "treeStar";
         treeGroup.add(star);
+
+        // Add Light to Star
+        starLight = new THREE.PointLight(0xFFD700, 0.4, 8); // Reduced intensity and distance
+        starLight.position.set(0, 5, 0);
+        treeGroup.add(starLight);
 
         // Lights
         const lightColors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00];
@@ -744,13 +752,14 @@
     // --- REPAIRED FIRE FUNCTION ---
     function createFire(x, y, z) {
         const fireGroup = new THREE.Group();
-        const particleCount = 100; // Increased count
+        const particleCount = 150; // Increased count for fuller fire
         // Brighter colors (Oranges, Reds, Yellows, White hot)
         const colors = [0xff4500, 0xff8c00, 0xffd700, 0xffaa33, 0xffffff];
         const fireTex = createFireTexture();
 
         for(let i=0; i<particleCount; i++) {
-            const geo = new THREE.PlaneGeometry(0.8, 0.8); // Larger softer particles
+            const size = 0.5 + Math.random() * 0.5;
+            const geo = new THREE.PlaneGeometry(size, size); 
             const mat = new THREE.MeshBasicMaterial({
                 color: colors[Math.floor(Math.random() * colors.length)],
                 map: fireTex,
@@ -763,13 +772,13 @@
             const particle = new THREE.Mesh(geo, mat);
             // Random start pos within firebox
             particle.position.set(
-                (Math.random() - 0.5) * 2.5, // Width
+                (Math.random() - 0.5) * 2.0, // Width
                 Math.random() * 0.5,       // Start low
                 (Math.random() - 0.5) * 0.5 // Depth
             );
             particle.rotation.z = Math.random() * Math.PI;
             particle.userData = {
-                speed: 1.5 + Math.random() * 3,
+                speed: 1.0 + Math.random() * 2.0,
                 resetY: -0.5, // Start slightly below visual hearth
                 wobble: Math.random() * 10
             };
@@ -1054,11 +1063,9 @@
         addCollider(dTableGroup, new THREE.Vector3(5, 1, -10), new THREE.Vector3(4, 2, 4));
 
         // --- NEW INDOOR TREE & GIFTS ---
-        // DESIGNER CHOICE: Front Left Corner (visually opposite dining/bed)
-        // House center is (0,0,-10). 
-        // Relative Position: x=-7.5, z=6.5 (Near front wall/window)
-        // World Position: (-7.5, 0, -3.5)
-        createIndoorTree(-7.5, 0, -3.5); 
+        // Moved to LEFT SIDE as requested.
+        // x=-7 (Left), z=4 (Near front)
+        createIndoorTree(-7, 0, 4); 
 
         // Vintage Letter (On Table)
         const letterCanvas = document.createElement('canvas');
@@ -1490,23 +1497,31 @@
         
         // --- Animate Fire & Light ---
         if(fireLight) {
-            // Smoother light flicker - Slower oscillation
-            fireLight.intensity = 1.0 + Math.sin(time * 0.002) * 0.15 + Math.cos(time * 0.005) * 0.05;
+            // "Noise-like" flickering for realistic fire (random fluctuations)
+            const noise = (Math.sin(time * 0.01) + Math.sin(time * 0.035) + Math.sin(time * 0.07)) / 3;
+            fireLight.intensity = 1.2 + noise * 0.4;
+        }
+
+        // --- Animate Star Light ---
+        if(starLight) {
+            // Subtle glowing pulse - softer
+            starLight.intensity = 0.4 + Math.sin(time * 0.002) * 0.1;
         }
         
         fireParticles.forEach(p => {
-            p.position.y += p.userData.speed * 0.04;
+            p.position.y += p.userData.speed * 0.03;
             // More organic wobble
-            p.position.x = Math.sin(time * 0.005 + p.userData.wobble) * 0.3;
+            p.position.x += Math.sin(time * 0.005 + p.userData.wobble) * 0.01;
             
             // Fading logic
-            if(p.position.y > 2.0 || p.material.opacity <= 0) {
+            if(p.position.y > 2.0 || p.material.opacity <= 0.05) {
                 p.position.y = p.userData.resetY;
                 p.scale.set(1,1,1);
-                p.material.opacity = 1.0;
+                p.material.opacity = 0.8; // Reset opacity
+            } else {
+                // Fade out as it rises
+                p.material.opacity -= 0.015;
             }
-            // Fade out as it rises
-            p.material.opacity = 1.0 - (p.position.y / 2.0);
             
             p.lookAt(camera.position); 
         });
