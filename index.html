@@ -1043,7 +1043,7 @@
         interactables.push({
             mesh: boyfriendNPC,
             type: 'boyfriend',
-            message: "Welcome home! I've made the place cozy just for you. Check out our photos on the wall!",
+            message: "Welcome Home, my sweetheart. I've dimmed the lights and made everything cozy, waiting for the moment you walked through that door. When you're ready, take a peek at the photos on the wall, I put them there to remind you how much I cherish our life together. I love you!",
             distance: 6
         });
     }
@@ -1711,7 +1711,7 @@
                 modalTitle.style.color = '#c41e3a';
                 modalBody.innerHTML = LETTER_CONTENT;
             } else if (nearbyObject.type === 'boyfriend') {
-                modalTitle.innerText = "Boyfriend";
+                modalTitle.innerText = "Charles Austria";
                 modalTitle.style.color = 'blue';
                 modalBody.innerHTML = nearbyObject.message;
             } else if (nearbyObject.type === 'photo') {
